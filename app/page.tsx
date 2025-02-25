@@ -1,101 +1,126 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import CityInput from "./RootComponents/CityInput/CityInput";
+import axios from "axios";
+import WeatherChart from "./RootComponents/WeatherChart/WeatherChart";
+import { useState } from "react";
+import { DynamicChartData, IList, TWeatherParams } from "./types/types";
+import WeatherParamsRadioGroup from "./RootComponents/WeatherParamsRadioGroup/WeatherParamsRadioGroup";
+import CitiesList from "./RootComponents/CitiesList/CitiesList";
+import ApiKeyDialog from "./RootComponents/ApiKeyInput/ApiKeyInput";
+import ServiceDescription from "./RootComponents/ServiceDescription/ServiceDescription";
+
+export default function Root() {
+  const [data, setData] = useState<DynamicChartData[] | undefined>();
+  const [selectedParam, setSelectedParam] =
+    useState<TWeatherParams>("temperature");
+  const [forecastRange, setForecastRange] = useState(5);
+  const [apiKey, setApiKey] = useState(localStorage.getItem("apiKey"));
+
+  const cities = data?.[0]
+    ? Object.keys(data[0]).filter((key) => key !== "date")
+    : [];
+  const getCityGeoUrl = (city: string) =>
+    `http://api.openweathermap.org/geo/1.0/direct?q=${city}&appid=${apiKey}`;
+  const getWeatherUrl = (lat: number, lon: number) =>
+    `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&units=metric&appid=${apiKey}`;
+
+  const hideCitiesOnChart = (citiesToHide: string[]) => {
+    setData((prev) =>
+      prev!.map((item) => {
+        const newItem = { ...item };
+        citiesToHide.forEach((city) => {
+          delete newItem[city];
+        });
+        return newItem;
+      })
+    );
+  };
+
+  const getWeather = async (city: string) => {
+    try {
+      //Get geo coordinates of the city
+      const response = await axios.get(getCityGeoUrl(city));
+      if (response.data) {
+        try {
+          getWeatherInfo(response.data[0].lat, response.data[0].lon);
+        } catch (error) {
+          console.error(error);
+        }
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  //Get weather via coordinates
+  const getWeatherInfo = async (lat: number, lon: number) => {
+    try {
+      const response = await axios.get(getWeatherUrl(lat, lon));
+      if (response.data) {
+        const newData = response.data.list.map((i: IList) => ({
+          date: i.dt_txt,
+          [response.data.city.name]: {
+            ...i.main,
+            weather: i.weather,
+            wind: i.wind,
+          },
+        }));
+
+        setData((prev) => {
+          if (!prev) return newData;
+
+          return prev.map((item, idx) => ({
+            ...item,
+            ...newData[idx],
+          }));
+        });
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const handleWeatherParamChange = (value: TWeatherParams) => {
+    setSelectedParam(value);
+  };
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
-
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
+    <>
+      <header className="text-4xl font-bold text-center mt-8 mb-4">
+        OpenWeather Graph
+      </header>
+      {apiKey ? (
+        <div className="flex mt-10 gap-20">
+          <div className="flex flex-col gap-10">
+            <CityInput onSubmitCity={getWeather} />
+            <WeatherParamsRadioGroup
+              value={selectedParam}
+              onChange={handleWeatherParamChange}
+              setForecastRange={setForecastRange}
             />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+            {cities[0] && (
+              <CitiesList
+                cities={cities}
+                hideCitiesOnChart={hideCitiesOnChart}
+                clearData={() => setData(undefined)}
+              />
+            )}
+          </div>
+          {data && cities[0] ? (
+            <WeatherChart
+              data={data}
+              cities={cities}
+              paramToShow={selectedParam}
+              forecastRange={forecastRange}
+            />
+          ) : (
+            <ServiceDescription />
+          )}
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+      ) : (
+        <ApiKeyDialog setApiKey={setApiKey} />
+      )}
+    </>
   );
 }
