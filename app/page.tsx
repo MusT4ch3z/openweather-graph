@@ -3,7 +3,7 @@
 import CityInput from "./RootComponents/CityInput/CityInput";
 import axios from "axios";
 import WeatherChart from "./RootComponents/WeatherChart/WeatherChart";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { DynamicChartData, IList, TWeatherParams } from "./types/types";
 import WeatherParamsRadioGroup from "./RootComponents/WeatherParamsRadioGroup/WeatherParamsRadioGroup";
 import CitiesList from "./RootComponents/CitiesList/CitiesList";
@@ -15,7 +15,17 @@ export default function Root() {
   const [selectedParam, setSelectedParam] =
     useState<TWeatherParams>("temperature");
   const [forecastRange, setForecastRange] = useState(5);
-  const [apiKey, setApiKey] = useState(localStorage.getItem("apiKey"));
+  const [isClient, setIsClient] = useState(false);
+  const [apiKey, setApiKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    setIsClient(true);
+    setApiKey(localStorage.getItem("apiKey"));
+  }, []);
+
+  if (!isClient) {
+    return null;
+  }
 
   const cities = data?.[0]
     ? Object.keys(data[0]).filter((key) => key !== "date")
