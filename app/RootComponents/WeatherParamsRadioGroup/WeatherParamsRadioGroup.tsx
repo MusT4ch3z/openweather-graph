@@ -21,7 +21,7 @@ const WeatherParamsRadioGroup: React.FC<IWeatherParamsRadioGroup> = ({
         Display parameter for the chart
       </label>
       <div className="flex flex-col gap-3">
-        <label className="text-base h-4">Weather forecast range</label>
+        <label className="text-base h-4">Weather forecast range, days</label>
         <Slider
           defaultValue={[5]}
           min={1}
