@@ -31,7 +31,7 @@ export default function Root() {
     ? Object.keys(data[0]).filter((key) => key !== "date")
     : [];
   const getCityGeoUrl = (city: string) =>
-    `http://api.openweathermap.org/geo/1.0/direct?q=${city}&appid=${apiKey}`;
+    `https://api.openweathermap.org/geo/1.0/direct?q=${city}&appid=${apiKey}`;
   const getWeatherUrl = (lat: number, lon: number) =>
     `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&units=metric&appid=${apiKey}`;
 
